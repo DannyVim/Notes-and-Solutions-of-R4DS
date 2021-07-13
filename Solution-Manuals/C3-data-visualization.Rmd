@@ -1,0 +1,375 @@
+---
+title: "Rnotes to R for Data Science"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+#setwd("C:/Users/admin/OneDrive/Working/R4DS-Wickham&Grolemund")
+```
+
+# Explore
+
+## 3 Data visualisation
+
+A data frame is a rectangular collection of variables (in the columns) and observations (in the rows). `mpg` contains observations collected by the US Environmental Protection Agency on 38 models of car.
+
+```{r mpg}
+mpg
+```
+
+Do cars with big engines use more fuel than cars with small engines? The plot shows a negative relationship between engine size (`displ`) and fuel efficiency (`hwy`).
+
+```{r mpg-plot1}
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy))
+```
+
+### Exercise 3.2
+
+> 1.  Run `ggplot(data = mpg)`. What do you see?
+
+`ggplot`本身只是提供了一张画布，在`geom_function`给出具体参数之前，并不会有图像。`ggplot`是一层一层画出来的图。
+
+```{r 3.2.1}
+ggplot(data = mpg)
+```
+
+> 2.  How many rows are in `mpg`? How many columns?
+
+234 rows and 11 columns(variables)
+
+```{r 3.2.2}
+# base R
+nrow(mpg)
+ncol(mpg)
+
+dim(mpg) # Retrieve or set the dimension of an object
+
+# dplyr
+glimpse(mpg) # like str() function
+```
+
+> 3.  What does the `drv` variable describe? Read the help for ?mpg to find out.
+
+the type of drive train, where f = front-wheel drive, r = rear wheel drive, 4 = 4wd
+
+> 4.  Make a scatterplot of hwy vs cyl.
+
+```{r 3.2.4}
+ggplot(mpg)+geom_point(mapping = aes(x=cyl,y=hwy))
+```
+
+> 5.  What happens if you make a scatterplot of `class` vs `drv`? Why is the plot not useful?
+
+分类数据不适合用散点图。
+
+```{r 3.2.5}
+ggplot(mpg)+geom_point(mapping = aes(x=class,y=drv))
+```
+
+如果要用点状来表示，我们可以让不同的点形成不同的大小或颜色来区分数量，如下：
+
+```{r 3.2.5}
+ggplot(mpg)+geom_count(mapping = aes(x=class,y=drv))
+```
+
+### Exercise 3.3
+
+> 1.  What's gone wrong with this code? Why are the points not blue?
+>
+> ``` {.r}
+> ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy, color = "blue"))
+> ```
+
+体中的`color`属性其实是在指数据中`color`变量等于`blue`的类别。color属性不是放在`aes`函数里面的，正确的应该是
+
+```{r 3.3.1}
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy), color = "blue")
+```
+
+> 2.  Which variables in `mpg` are categorical? Which variables are continuous? (Hint: type `?mpg` to read the documentation for the dataset). How can you see this information when you run `mpg`?
+
+使用`glimpse()`函数，可以看到分类变量有：manufacturer、model、trans、drv、fl、class；连续变量有：displ、year、cyl、cty、hwy。
+
+> 3.  Map a continuous variable to `color`, `size`, and `shape.` How do these aesthetics behave differently for categorical vs. continuous variables?
+
+`shape`不行。
+
+```{r 3.3.3}
+p <- ggplot(mpg,aes(displ,hwy)) 
+p + geom_point(aes(color=year))
+p + geom_point(aes(size=year))
+p + geom_point(aes(shape=year))
+```
+
+> 4.  What happens if you map the same variable to multiple aesthetics?
+
+这应该是需要避免的情况。重复的变量并没有给图带来新的信息，反而会干扰图原本的简洁。
+
+> 5.  What does the `stroke` aesthetic do? What shapes does it work with? (Hint: use `?geom_point`)
+
+对于一些有边框的图形，例如`shape=21`可以使用stroke参数来设定边框粗细。下为帮助文件中的例子。
+
+```{r 3.3.5}
+ggplot(mtcars, aes(wt, mpg)) + geom_point(shape = 21, colour = "black", fill = "white", size = 5, stroke = 5)
+```
+
+> 6.  What happens if you map an aesthetic to something other than a variable name, like `aes(colour = displ < 5)`? Note, you'll also need to specify x and y.
+
+根底一道题目类似，就是把color标记到某些符合条件的数据上。
+
+```{r 3.3.6}
+ggplot(mpg,aes(displ,hwy)) + geom_point(aes(colour = displ < 5))
+```
+
+### Exercise 3.5
+
+> 1.  What happens if you facet on a continuous variable?
+
+`facet`并不会管接受的值是连续还是离散的，它会将其统一当作是类别来进行处理。
+
+> 2.  What do the empty cells in plot with `facet_grid(drv ~ cyl)` mean? How do they relate to this plot?
+>
+> ```{r}
+> ggplot(data = mpg) + geom_point(mapping = aes(x = drv, y = cyl))
+> ```
+
+分类变量，部分区域就没有值了，或者说没有样本了。
+
+```{r 3.5.2}
+ggplot(data = mpg) + geom_point(mapping = aes(x = drv, y = cyl)) + facet_grid(drv ~ cyl)
+```
+
+> 3.  What plots does the following code make? What does `.` do?
+>
+> ```{r}
+> ggplot(data = mpg) + 
+>   geom_point(mapping = aes(x = displ, y = hwy)) +
+>   facet_grid(drv ~ .)
+> ggplot(data = mpg) + 
+>   geom_point(mapping = aes(x = displ, y = hwy)) +
+>   facet_grid(. ~ cyl)
+> ```
+
+我们知道`facet_grid()`函数内是一个"函数"，所以很明显前者是指在y轴上根据`drv`值切分，后者则是指按`cyl`在x轴上切分。
+
+> 4.  Take the first faceted plot in this section:
+>
+> ```{r}
+> ggplot(data = mpg) + 
+>   geom_point(mapping = aes(x = displ, y = hwy)) + 
+>   facet_wrap(~ class, nrow = 2)
+> ```
+>
+> What are the advantages to using faceting instead of the colour aesthetic? What are the disadvantages? How might the balance change if you had a larger dataset?
+
+`facet`最大的好处应该说是把不同类型的数据单独呈现出来。在一个图里用`colour`其实是混在一起的。颜色多其实分辨不清，但分片多并不会。不过，分片也会弱化不同类别之间的联系。但两个其实合在一起使用，最后的图不一定呈现所有的样本点。切分的时候也可以自定义如何划分数据。
+
+> 5.  Read `?facet_wrap`. What does `nrow` do? What does `ncol` do? What other options control the layout of the individual panels? Why doesn't `facet_grid()` have `nrow` and `ncol` arguments?
+
+控制最后成图的面板的行列数。`facet_grid()`不需要这个参数是因为它需要输入两个值，交叉表已经定好。
+
+> 6.  Which of the following two plots makes it easier to compare engine size (`displ`) across cars with different drive trains? What does this say about when to place a faceting variable across rows or columns?
+>
+> ```{r}
+> ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy)) + facet_grid(drv ~ .)
+> ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy)) + facet_grid(. ~ drv)
+> ```
+
+后者显得更好。我们实际上想要看到的是`y`的变化趋势。如果是前者，其实变化趋势被挤压了，数据点都横躺着，看不出明显的变化；而后者明显更分散。
+
+```{r 3.5.6, echo=FALSE}
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy)) + facet_grid(drv ~ .)
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy)) + facet_grid(. ~ drv)
+```
+
+> 7.  Recreate this plot using `facet_wrap()` instead of `facet_grid()`. How do the positions of the facet labels change?
+>
+> ```{r}
+> ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy)) + facet_grid(drv ~ .)
+> ```
+
+`facet_wrap()`默认是横着排的。所以使用`facet_wrap()`等于使用`facet_grid(. ~ drv)`。
+
+```{r 3.5.7}
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy)) + facet_grid(drv ~ .)
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy)) + facet_wrap(drv ~ .)
+```
+
+### Exercise 3.6
+
+> 1.  What geom would you use to draw a line chart? A boxplot? A histogram? An area chart?
+
+-   line chart: `geom_line()`
+-   boxplot: `geom_boxplot()`
+-   histogram: `geom_histogram()`
+-   area chart: `geom_area()`
+
+> 2.  Run this code in your head and predict what the output will look like. Then, run the code in R and check your predictions.
+
+```{r 3.6.2, eval=}
+ggplot(data = mpg, mapping = aes(x = displ, y = hwy, color = drv)) + 
+  geom_point() + 
+  geom_smooth(se = FALSE)
+```
+
+displ为x轴，hwy为y轴，然后以drv类别设色。散点图加上drv三种类型的回归拟合曲线，曲线上没有标准误范围。
+
+> 3.  What does `show.legend = FALSE` do? What happens if you remove it? Why do you think I used it earlier in the chapter?
+
+不显示图例。如果不这么声明的话，会默认给出图示（如上一题的图）。没有图例，可以节约画布空间。
+
+> 4.  What does the `se` argument to `geom_smooth()` do?
+
+`se`指的是标准误。`geom_smooth()`其实是按照回归方程拟合了一条曲线，程序默认是会画出`se`的。
+
+> 5.  Will these two graphs look different? Why/why not?
+
+```{r 3.6.5, eval=}
+ggplot(data = mpg, mapping = aes(x = displ, y = hwy)) + 
+  geom_point() + geom_smooth()
+ggplot() + 
+  geom_point(data = mpg, mapping = aes(x = displ, y = hwy)) + 
+  geom_smooth(data = mpg, mapping = aes(x = displ, y = hwy))
+```
+
+两张图是一样的。只是变量声明的位置不同而已。
+
+> 6.  Recreate the R code necessary to generate the following graphs. Note that wherever a categorical variable is used in the plot, it's `drv`.
+
+```{r 3.6.6, message=FALSE}
+p <- ggplot(data = mpg, mapping = aes(x = displ, y = hwy))
+p + geom_point() + geom_smooth(se = FALSE) #1
+p + geom_smooth(aes(group = drv), se = FALSE) + geom_point() #2
+p + geom_point(aes(color = drv)) + geom_smooth(aes(color = drv),se = FALSE)#3
+p + geom_point(aes(color = drv)) + geom_smooth(se = FALSE)#4
+p + geom_point(aes(color = drv)) + geom_smooth(aes(linetype = drv), se = FALSE)#5
+p + geom_point(size = 4, colour = "white") + geom_point(aes(colour = drv))#6
+```
+
+### Exercise 3.7
+
+> 1.  What is the default geom associated with `stat_summary()`? How could you rewrite the previous plot to use that geom function instead of the stat function?
+
+在`?stat_summary()` 可以看到应该是 `geom_pointrange()`。
+
+```{r 3.7.1, message=FALSE}
+ggplot(data = diamonds) + geom_pointrange(
+  mapping = aes(x = cut, y = depth),
+  stat = 'summary',
+  fun.min = min,
+  fun.max = max,
+  fun = median
+)
+```
+
+> 2.  What does `geom_col()` do? How is it different to `geom_bar()`?
+
+`geom_col()`与`geom_bar()`是类似的，只是两者默认的统计量不同，前者是indentity，后者是count。
+
+> 3.  Most geoms and stats come in pairs that are almost always used in concert.\
+>     Read through the documentation and make a list of all the pairs. What do they have in common?
+
+只是改了前缀而已。进入`ggplot`包的目录，"G"和"S"下的名称是类似的。有一些，文档都是一样的。
+
+| geom                    | stat                    |
+|-------------------------|-------------------------|
+| `geom_bar()`            | `stat_count()`          |
+| `geom_bin2d()`          | `stat_bin_2d()`         |
+| `geom_boxplot()`        | `stat_boxplot()`        |
+| `geom_contour_filled()` | `stat_contour_filled()` |
+| `geom_contour()`        | `stat_contour()`        |
+| `geom_count()`          | `stat_sum()`            |
+| `geom_density_2d()`     | `stat_density_2d()`     |
+| `geom_density()`        | `stat_density()`        |
+| `geom_dotplot()`        | `stat_bindot()`         |
+| `geom_function()`       | `stat_function()`       |
+| `geom_sf()`             | `stat_sf()`             |
+| `geom_sf()`             | `stat_sf()`             |
+| `geom_smooth()`         | `stat_smooth()`         |
+| `geom_violin()`         | `stat_ydensity()`       |
+| `geom_hex()`            | `stat_bin_hex()`        |
+| `geom_qq_line()`        | `stat_qq_line()`        |
+| `geom_qq()`             | `stat_qq()`             |
+| `geom_quantile()`       | `stat_quantile()`       |
+
+> 4.  What variables does `stat_smooth()` compute? What parameters control its behaviour?
+
+文档内"Computed variables"一栏给出了四个值：y or x、ymin or xmin、ymax or xmax、se。
+
+从文档里还可以看到很多参数都会影响最终的结果：method（回归方式）、formula（回归公式）、se（标准误的level）、na.rm（是否忽略NA）等
+
+> 5.  In our proportion bar chart, we need to set `group = 1`. Why? In other words what is the problem with these two graphs?
+```{r, eval = FALSE}
+ggplot(data = diamonds) + geom_bar(mapping = aes(x = cut, y = after_stat(prop)))
+ggplot(data = diamonds) + geom_bar(mapping = aes(x = cut, fill = color, y = after_stat(prop)))
+```
+
+第一张图：如题图所设，最终成图的时候，条形图的高度是1。如果我们想要获得比例，group的参数是需要的。Fair in Fair 当然是1。我们要算的是Fair in allcut。group值在这里会阻止它进行这样有误的计算。group=1、group='cut'、group=2等，都可以得到有效的结果。
+
+第二张图：还是纵坐标出的问题。有两种更准确的显示方法，一种是纵坐标改成计数的叠加，一种是改成概率的叠加。作者可能是要呈现概率的叠加。后者就是在继承前一图的基础上，再呈现每种类别内，另一属性占比情况。但是后者，更进一步来说，分母更应该是cut的每种类型，而不是整体。
+
+```{r 3.7.5}
+ggplot(data = diamonds) + geom_bar(mapping = aes(x = cut, y = after_stat(prop), group = 'cut'))
+ggplot(data = diamonds) + geom_bar(mapping = aes(x = cut, y = stat(count)/sum(stat(count)), fill = color))
+```
+
+### Exercise 3.8
+
+> 1.  What is the problem with this plot? How could you improve it?
+```{r}
+ggplot(data = mpg, mapping = aes(x = cty, y = hwy)) + geom_point()
+```
+
+如书中所述，直接用point并没有展示所有点的信息，你可能看不到重叠的情况。通过给各个点叠加一个小的噪音，可以呈现出数据分布的情况。密集的区域与离散的区域。
+
+```{r}
+ggplot(data = mpg, mapping = aes(x = cty, y = hwy)) + geom_jitter()
+```
+
+> 2.  What parameters to `geom_jitter()` control the amount of jittering?
+
+看文档应该是`width`和`height`两个参数。当两个参数都设为零的时候，图像跟`geom_point()`出默认图是一样的。
+
+> 3.  Compare and contrast `geom_jitter()` with `geom_count()`.
+
+在目的上是类似的，都可以体现出重复的数据点，只不过一个是通过区域里的密集情况，一个是通过点的大小。不过后者在出图的时候，默认的单色会有重叠，显示效果其实不算太好。两个也可以搭配在一起使用。
+
+> 4.  What's the default position adjustment for `geom_boxplot()`? Create a visualisation of the `mpg` dataset that demonstrates it.
+
+看文档的话，默认的参数是`position = "dodge2"`。
+
+```{r}
+ggplot(data = mpg, aes(x = drv, y = cty, colour = class)) + geom_boxplot()
+```
+
+### Exercise 3.9
+
+> 1.  Turn a stacked bar chart into a pie chart using `coord_polar()`.
+
+```{r}
+ggplot(mpg, aes(x = class[5], fill = drv)) + geom_bar() + coord_polar(theta = 'y')
+```
+
+> 2.  What does `labs()` do? Read the documentation.
+
+给图加标签的。是可选项，非必要元素。
+
+> 3.  What's the difference between `coord_quickmap()` and `coord_map()`?
+
+看文档说明的话，后者就是标准的墨卡托投影法，而前者是一个近似的快速算法。
+
+> 4.  What does the plot below tell you about the relationship between cty and highway mpg?\
+Why is `coord_fixed()` important?\
+What does `geom_abline()` do?
+```{r, eval = FALSE}
+ggplot(data = mpg, mapping = aes(x = cty, y = hwy)) +
+  geom_point() + 
+  geom_abline() +
+  coord_fixed()
+```
+
+highway的耗油量增长高于cty的耗油量增长。\
+`coord_fixed()`使`geom_abline()`增加的线呈45度角。\
+总的来说，坐标系的纵坐标和横坐标被统一了起来，使整个图按45度角分布，易于读出数据呈现的关系。
