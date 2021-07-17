@@ -1,10 +1,8 @@
+> Hadley网站上的书跟他GitHub仓库里的内容部分地方会由差异，因为作者一直在更新书籍。
 
+------
 
-https://r4ds.had.co.nz/data-visualisation.html
-
-https://jrnold.github.io/r4ds-exercise-solutions/data-visualisation.html
-
-# **1 Introduction**
+# 1 Introduction
 
 ![img](ReadingNotes.assets/data-science-explore.png)
 
@@ -44,9 +42,9 @@ install.packages(c("nycflights13", "gapminder", "Lahman"))
 
 
 
-# **Explore**
+# Explore
 
-# **3 Data Visualization**
+# 3 Data Visualization
 
 用`ggplot2::mpg`这个数据集来展示一些基本操作。
 
@@ -138,5 +136,89 @@ ggplot(data = <DATA>) +
 
 
 
-# **4 Workflow: basics**
+# 4 Workflow: basics
 
+`<-`符号不应图省事改用`=`，会有混淆的地方。在R Studio里面使用`Alt+-`可以快捷输入。
+
+作者推荐`this_is_a_name`这种命名方式，同时命名不要偷懒，写得清楚一些比较好。`TAB`可以自动补全，而`Ctrl+↑`则可以选择同样开头的变量。
+
+把赋值的语句用括号括起来，会直接打印出来：`(y=seq(1,10))`。
+
+> 这在对数据进行观察交互的时候很有用，但不应该在文件中使用。
+
+`Alt + Shift + K`在R Studio中会给出大部分的快捷键。
+
+# 5 Data Transformation
+
+> 这一章作者在进行重构。——2021-7-14
+
+`dplyr`基本的函数如下：
+
+1. 对行操作：`filter()`、`slice()`、`arrange()`
+2. 对列操作：`select()`、`mutate()`、`rename()`、`relocate()`
+3. 对组操作：`summarise()`、`group_by()`
+
+> 使用的时候需要注意，这些函数并不会对原始数据进行更改，而是生成一个新的data frame。所以如果要保存操作的结果，需要对其进行赋值，如下所示。
+>
+> ```R
+> jan1 <- filter(flights, month == 1, day == 1)
+> ```
+
+在对数据进行比较中，特别需要注意`浮点数`。作者推荐使用`near()`，而不是`==`，以避免出现问题。
+
+下图给出了各种逻辑运算符：![Complete set of boolean operations](ReadingNotes.assets/transform-logical.png)
+
+取多个豁然值的时候，一个快速的方法是`%in%`: `filter(df, x %in% c(a, b, c))` ，下面两条表述等价：
+
+```R
+month == 11 | month == 12
+month %in% c(11, 12)
+```
+
+除此之外，使用[德摩根定律](https://zh.wikipedia.org/wiki/%E5%BE%B7%E6%91%A9%E6%A0%B9%E5%AE%9A%E5%BE%8B)来简化复杂的命题逻辑，也是非常有效的。
+
+运算中涉及到`NA`的时候一定要注意`NaN`的可能性。
+
+用`arrange()`排序的时候，`NA`总是排在最后的。
+
+写`select()`的参数是一个技术活：
+
+-   `starts_with("abc")`
+-   `ends_with("xyz")`
+-   `contains("ijk")`
+-   `num_range("x", 1:3)`: 匹配 `x1`, `x2` 和 `x3`
+-   `matches("(.)\\1")`：正则表达式
+-   `everything()`
+-   ……
+
+和其他方法不同，`mutate()`不需要赋值操作也会对原始数据进行更改。同时注意其与`transmute()`的区别。
+
+[%/%](https://rdrr.io/r/base/Arithmetic.html)整除，[%%](https://rdrr.io/r/base/Arithmetic.html)模除（余数）。`mutate()`的计算中有非常多计算方法，按需从帮助文件里选用吧。
+
+三角函数参见`?Trig`的帮助文档。
+
+`summarise()` 一般来说会跟 `group_by()`一起使用。
+
+同时因为中间步骤愈发增多，函数嵌套的情况下引入管道操作符（pipe）：`%>%`。示意如下：`x %>% f(y)` 代表着 `f(x, y)`, 然后 `x %>% f(y) %>% g(z)` 代表着 `g(f(x, y), z)` ，然后可以不断嵌套下去。 
+
+在数据聚合的时候，注意使用`n()`来计算样本量，或是使用`sum(!is.na(x))`来计算非空样本量。
+
+>  http://varianceexplained.org/r/empirical_bayes_baseball/ 
+>
+>  http://www.evanmiller.org/how-not-to-sort-by-average-rating.html.
+>
+> 这一节里面所提到两个链接非常有阅读和参考的价值。主要是关于贝叶斯估计的想法。
+
+此外，书中还列出了一系列有用的统计函数：
+
+- `mean(x)`、`median(x)`
+-  `sd(x)`、 `IQR(x)`、 `mad(x)`
+-  `min(x)`、`quantile(x, 0.25)`、 `max(x)`
+-  `first(x)`、 `nth(x, 2)`, 、`last(x)`
+- `n()`、 `sum(!is.na(x))`、 `n_distinct(x)`
+
+> `range()`会返回对象的最大值和最小值。
+>
+> 此外，用`sum()`来计数，需要输入一个逻辑参数，它会对TRUE进行计数。
+
+`grouping()`分层多的时候，`summarise()`会根据最小的分组单元进行计算。

@@ -1,0 +1,388 @@
+---
+title: "Solutions to C4-C5"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(nycflights13)
+```
+
+# Chapter 4 Workflow: Basics
+
+## Exercise 4
+
+> 1.  Why does this code not work?
+>
+> ```{r, error = TRUE}
+> my_variable <- 10
+> my_varıable
+> ```
+
+调用数据的时候，把`i`写成了小写大写字母`ı`。
+
+> 2.  Tweak each of the following R commands so that they run correctly:
+>
+> ```{r, eval = FALSE}
+> libary(tidyverse)
+> ggplot(dota = mpg) + 
+>   geom_point(maping = aes(x = displ, y = hwy))
+> ```
+
+正确的应该是：
+
+```{r 4.2, eval=FALSE}
+library(tidyverse)
+ggplot(data = mpg) + geom_point(mapping = aes(x = displ, y = hwy))
+```
+
+在输入的时候，部分借助自动补全，可以避免一些typos。
+
+> 3.  Press Alt + Shift + K. What happens? How can you get to the same place using the menus?
+
+输出快捷键表。Menu-Tools-Keyboard Shortcut Help。
+
+# Chapter 5
+
+## Exercise 5.2
+
+> 1.  Find all flights that
+>
+> ```{=html}
+> <!-- -->
+> ```
+> a.  Had an arrival delay of two or more hours
+> b.  Flew to Houston (`IAH` or `HOU`)
+> c.  Were operated by United, American, or Delta
+> d.  Departed in summer (July, August, and September)
+> e.  Arrived more than two hours late, but didn't leave late
+> f.  Were delayed by at least an hour, but made up over 30 minutes in flight
+> g.  Departed between midnight and 6am (inclusive)
+
+```{r 5.2.1}
+#a
+filter(flights, arr_delay >= 120)
+#b
+filter(flights, dest %in% c('IAH','HOU'))
+#c
+filter(flights, carrier %in% c("AA", "DL", "UA"))
+#d
+filter(flights, month %in% 7:9)
+#e
+filter(flights, arr_delay > 120, dep_delay <= 0)
+#f
+filter(flights, dep_delay >= 60, dep_delay - arr_delay > 30)
+#g
+filter(flights, dep_time <= 600 | dep_time == 2400)
+#filter(flights, dep_time %% 2400 <= 600)
+```
+
+> 2.  Another useful dplyr filtering helper is `between()`. What does it do? Can you use it to simplify the code needed to answer the previous challenges?
+
+取某变量的范围[a,b]。 所以`filter(flights, month %in% 7:9)`也可以改为`filter(flights, between(month,7,9))`。
+
+> 3.  How many flights have a missing `dep_time`? What other variables are missing? What might these rows represent?
+
+`dep_time`缺失的样本，`arr_time`也缺失了，可能是取消的航班？
+
+```{r 5.2.3}
+# 首先可以筛选出NA的样本
+filter(flights, is.na(dep_time))
+# 要知道有多少个样本缺失值
+summary(flights$dep_time)
+# 或是
+nrow(filter(flights, is.na(dep_time)))
+```
+
+> 4.  Why is `NA ^ 0` not missing? Why is `NA | TRUE` not missing? Why is `FALSE & NA` not missing? Can you figure out the general rule? (`NA * 0` is a tricky counterexample!)
+
+任何数的零次方都等于1。\
+"真或假"永远为真。\
+"假和X"永远为假。\
+基本上带有`NA`的运算都要注意`NaN`。
+
+## Exercise 5.3
+
+> 1.  How could you use `arrange()` to sort all missing values to the start? (Hint: use `is.na()`).
+
+```{r 5.3.1}
+arrange(flights, desc(is.na(dep_time)))
+```
+
+> 2.  Sort `flights` to find the flights with longest departure delays. Find the flights that left earliest.
+
+```{r 5.3.2}
+arrange(flights, desc(dep_delay))[1,]
+arrange(flights, dep_delay)[1,]
+```
+
+> 3.  Sort `flights` to find the fastest (highest speed) flights. (Hint: try sorting by a calculation).
+
+```{r 5.3.3}
+arrange(flights, desc(distance / air_time))[1,]
+```
+
+> 4.  Which flights travelled the farthest? Which travelled the shortest?
+
+```{r 5.3.4}
+arrange(flights, desc(distance))[1,]
+arrange(flights, distance)[1,]
+```
+
+## Exercise 5.4
+
+> 1.  Brainstorm as many ways as possible to select `dep_time`, `dep_delay`, `arr_time`, and `arr_delay` from `flights`.
+
+除了列出各个变量名外，给了另一个方法，其他就不管了。
+
+```{r 5.4.1}
+select(flights, starts_with("dep_"), starts_with("arr_"))
+```
+
+> 2.  What happens if you include the name of a variable multiple times in a select() call?
+
+后续重复的变量会被忽略。一如文中使用`everything()`来调整顺序一样。
+
+> 3.  What does the `any_of()` function do? Why might it be helpful in conjunction with this vector?
+>
+> ```{r, eval = FALSE}
+> vars <- c("year", "month", "day", "dep_delay", "arr_delay")
+> ```
+
+会输出`vars`这个向量里面所有的变量。
+
+> 4.  Does the result of running the following code surprise you? How do the select helpers deal with case by default? How can you change that default?
+>
+> ```{r, eval = FALSE}
+> select(flights, contains("TIME"))
+> ```
+
+它并不case sensitive！如果想要改变，加上`ignore.case = FALSE`。坦白说，很意外。不过，想来也是，如果总是case的，其实在筛选的时候反而增添了些麻烦。
+
+## Exercise 5.5
+
+> 1.  Currently `dep_time` and `sched_dep_time` are convenient to look at, but hard to compute with because they're not really continuous numbers. Convert them to a more convenient representation of number of minutes since midnight.
+
+```{r 5.5.1}
+flights_new = mutate(
+    flights,
+    dep_time_new = (dep_time %/% 100 * 60 + dep_time %% 100) %% 1440,
+    sched_dep_time_new = (sched_dep_time %/% 100 * 60 + sched_dep_time %%
+                              100) %% 1440
+)
+```
+
+> 2.  Compare `air_time` with `arr_time - dep_time`. What do you expect to see? What do you see? What do you need to do to fix it?
+
+两个值肯定不相等。根据`flights`帮助页面，`air_time`是指飞行分钟数，而后者两个变量都是用HHMM形式表示的整数值，直接相见并不是时间差。所以，我们首先需要更改后者为分钟数再来比较：
+
+```{r 5.5.2}
+airtime <- transmute(flights,air_time,
+    dep_time = (dep_time %/% 100 * 60 + dep_time %% 100) %% 1440,
+    arr_time = (arr_time %/% 100 * 60 + arr_time %% 100) %% 1440,
+    a2d = arr_time - dep_time,
+    time_diff = air_time - a2d
+  )
+nrow(filter(airtime, time_diff != 0))
+```
+
+可是从结果来看，有327150行不相等。可能是因为记录的时间，跨过了午夜，因为数据里有负值；以及这些飞机的航线跨越了时区，按地方时记录的。虽然`airports`里记录了time zone信息，但我不确定用`tz`还是`tzone`。
+
+> 3.  Compare `dep_time`, `sched_dep_time`, and `dep_delay`. How would you expect those three numbers to be related?
+
+假设`dep_delay == dep_time - sched_dep_time`，然后我们可以如下检验：
+
+```{r 5.5.3}
+delaytime <- transmute(flights,dep_delay,
+    dep_time = (dep_time %/% 100 * 60 + dep_time %% 100) %% 1440,
+    sched_dep_time = (sched_dep_time %/% 100 * 60 + sched_dep_time %% 100) %% 1440,
+    delay = dep_time - sched_dep_time,
+    time_diff = (dep_delay - delay)
+  )
+nrow(filter(delaytime, time_diff != 0))
+```
+
+结果有1236个值不同，而且这个差值均为1440分钟。实际上是因为过了零点，而产生的计算上的差误。`time_diff = (dep_delay - delay)%%1440`把这个影响取消掉就可以了。
+
+> 4.  Find the 10 most delayed flights using a ranking function. How do you want to handle ties? Carefully read the documentation for `min_rank()`.
+
+```{r 5.5.4}
+delayed <- mutate(flights,
+                  rank = min_rank(dep_delay))
+arrange(delayed, rank)[1:10,]
+```
+
+> 5.  What does `1:3 + 1:10` return? Why?
+
+我认为应该会报错，无法计算，但发现R会循环使用较短的向量来补齐。
+
+> 6.  What trigonometric functions does R provide?
+
+参见`?Trig`文档，主要的都有。
+
+## Exercise 5.6
+
+> 1.  Brainstorm at least 5 different ways to assess the typical delay characteristics of a group of flights. Consider the following scenarios:
+>
+> -   A flight is 15 minutes early 50% of the time, and 15 minutes late 50% of the time.
+> -   A flight is always 10 minutes late.
+> -   A flight is 30 minutes early 50% of the time, and 30 minutes late 50% of the time.
+> -   99% of the time a flight is on time. 1% of the time it's 2 hours late. 
+>
+> Which is more important: arrival delay or departure delay?
+
+直接回答最后的问题，迟到比迟发影响更大。延迟出发的话，可以在航线途中调整时间，但延迟到达的话，木已成舟。
+
+> 2. Come up with another approach that will give you the same output as `not_cancelled %>% count(dest)` and `not_cancelled %>% count(tailnum, wt = distance)` (without using `count()`).
+
+```{r 5.6.2}
+# 根据书里，先构造not_cancelled数据集
+not_cancelled <- flights %>% filter(!is.na(dep_delay), !is.na(arr_delay))
+# 再来筛选计算
+## same as `not_cancelled %>% count(dest)`
+not_cancelled %>% group_by(dest) %>% summarise(n=n())
+## same as `not_cancelled %>% count(tailnum, wt = distance)`
+not_cancelled %>% group_by(tailnum) %>% summarise(total_distance = sum(distance))
+```
+
+除了上面的方法，也可以把`summarise()`改成`tally()`
+
+> 3. Our definition of cancelled flights ( `is.na(dep_delay) | is.na(arr_delay)` ) is slightly suboptimal. Why? Which is the most important column?
+
+```{r 5.6.3}
+cancelled <- flights %>% filter(is.na(dep_delay) | is.na(arr_delay))
+cancelled2 <- flights %>% filter(is.na(arr_delay))
+identical(cancelled, cancelled2)
+```
+
+`dep_delay`这个条件是多余的。
+
+> 4. Look at the number of cancelled flights per day. Is there a pattern? Is the proportion of cancelled flights related to the average delay?
+
+只是每天的取消数量好像没有趋势。不过跟延迟的数量之间有较为密切的联系。
+
+```{r 5.6.4}
+cancelled_per_day <- flights %>% 
+  mutate(cancelled = (is.na(arr_delay) | is.na(dep_delay))) %>% 
+  group_by(year, month, day) %>% 
+  summarise(cancelled_num = sum(cancelled), flights_num = n())
+
+ggplot(cancelled_per_day) + geom_point(aes(x = cancelled_num, y = flights_num))
+
+cancelled_delay <- flights %>% 
+  mutate(cancelled = (is.na(arr_delay) | is.na(dep_delay))) %>% 
+  group_by(year, month, day) %>% 
+  summarise(
+    cancelled_avg = mean(cancelled),
+    dep_delay_avg = mean(dep_delay, na.rm = TRUE),
+    arr_delay_avg = mean(arr_delay, na.rm = TRUE)
+  )
+
+ggplot(cancelled_delay, aes(x = dep_delay_avg, y = cancelled_avg)) + geom_point() + geom_smooth()
+ggplot(cancelled_delay, aes(x = arr_delay_avg, y = cancelled_avg)) + geom_point() + geom_smooth()
+```
+
+> 5. Which carrier has the worst delays? Challenge: can you disentangle the effects of bad airports vs. bad carriers? Why/why not? (Hint: think about `flights %>% group_by(carrier, dest) %>% summarise(n())`)
+
+第二个问题直接按照`arr_delay ~ carrier + dest + origin`做一个线性回归。
+
+```{r 5.6.5}
+# 按航线算的延误
+carrier_delay <-
+  flights %>% group_by(carrier) %>% summarise(
+    arr_delay_avg = mean(arr_delay, na.rm = TRUE),
+    dep_delay_avg = mean(dep_delay, na.rm = TRUE),
+    delay_avg = (arr_delay_avg+dep_delay_avg) / 2
+  ) %>% arrange(desc(delay_avg))
+
+head(carrier_delay)
+# 再看各机场的延误情况
+dest_delay <-
+  flights %>% group_by(dest) %>% summarise(arr_delay_avg = mean(arr_delay, na.rm = TRUE)) %>% arrange(desc(arr_delay_avg))
+head(dest_delay)
+```
+
+> 6. What does the `sort` argument to `count()` do. When might you use it?
+
+可以省一步使用arrange降序排列。
+
+## Exercise 5.7
+
+> 1. Refer back to the lists of useful mutate and filtering functions. Describe how each operation changes when you combine it with grouping.
+
+此处需要注意的是数学计算函数不会受grouping影响，但统计量会被grouping影响。
+
+> 2. Which plane (`tailnum`) has the worst on-time record?
+
+首选筛除取消的航班，然后计算准点率，接着再筛除班次较少的（75%以下），最后再排序。
+
+```{r 5.7.2}
+flights %>% filter(!is.na(dep_delay), !is.na(arr_delay)) %>%
+  mutate(on_time=arr_delay<=0) %>%
+  group_by(tailnum) %>%
+  summarise(on_time_rate=mean(on_time),flights_num=n()) %>%
+  filter(flights_num>=110) %>%
+  arrange(on_time_rate) %>%
+  head()
+```
+
+> 3. What time of day should you fly if you want to avoid delays as much as possible?
+
+早上飞，尽早飞。
+
+```{r 5.7.3}
+flights %>% filter(!is.na(arr_delay)) %>%
+  group_by(hour) %>%
+  summarise(delay_avg = mean(arr_delay, na.rm = TRUE)) %>%
+  ggplot(aes(x = hour, y = delay_avg)) + geom_point() + geom_smooth()
+```
+
+> 4. For each destination, compute the total minutes of delay. For each flight, compute the proportion of the total delay for its destination.
+
+```{r 5.7.4}
+flights %>% filter(arr_delay >= 0) %>% group_by(dest, flight) %>% summarise(total_min_flight = sum(arr_delay,na.rm = TRUE)) %>%
+  mutate(
+    total_min_dest = sum(total_min_flight),
+    flight_prop = total_min_flight / total_min_dest
+  )
+```
+
+> 5. Delays are typically temporally correlated: even once the problem that caused the initial delay has been resolved, later flights are delayed to allow earlier flights to leave. Using `lag()`, explore how the delay of a flight is related to the delay of the immediately preceding flight.
+
+按照出发的机场、日期以及出发时间排序号之后，进行lag赋值；然后计算同样的延迟下，平均延误时间;最后看前一航班的延迟时长对后一航班平均延迟的影响。（其实用回归更清楚）
+
+```{r 5.7.5}
+flights %>% filter(!is.na(dep_time)) %>% arrange(origin, year, month, day, dep_time) %>%
+  group_by(origin) %>% mutate(delay_lag=lag(dep_delay)) %>% filter(!is.na(delay_lag)) %>%
+  group_by(delay_lag) %>% summarise(delay_mean=mean(dep_delay,na.rm=TRUE))%>%
+  ggplot(aes(x=delay_lag,y=delay_mean))+geom_point()
+```
+
+> 6. Look at each destination. Can you find flights that are suspiciously fast? (i.e. flights that represent a potential data entry error). Compute the air time of a flight relative to the shortest flight to that destination. Which flights were most delayed in the air?
+
+用箱线图里的离群值来判断是否可疑。
+
+```{r 5.7.6}
+flights %>% filter(!is.na(arr_time)) %>% group_by(dest) %>% 
+  mutate(suspect = (air_time < (quantile(air_time, 1 / 4, na.rm = TRUE) - 1.5 * IQR(air_time, na.rm = TRUE))) |
+    (air_time > (quantile(air_time, 3 / 4, na.rm = TRUE) + 1.5 * IQR(air_time, na.rm = TRUE)))) %>% ungroup() %>%
+  filter(suspect)
+```
+
+> 7. Find all destinations that are flown by at least two carriers. Use that information to rank the carriers.
+
+```{r 5.7.7}
+flights %>% group_by(dest,carrier) %>% count(carrier) %>% filter(n>=2) %>% group_by(carrier) %>% count(sort = TRUE)
+```
+
+> 8. For each plane, count the number of flights before the first delay of greater than 1 hour.
+
+```{r 5.7.8}
+flights %>% select(tailnum, month, day, dep_time, arr_time, arr_delay) %>% filter(!is.na(arr_time)) %>% 
+  arrange(tailnum, month, day, dep_time) %>% group_by(tailnum) %>%
+  mutate(gt1h = cumsum(arr_delay > 60)) %>%
+  summarise(num_flights = sum(gt1h < 1)) %>%
+  arrange(desc(num_flights))
+```
+
