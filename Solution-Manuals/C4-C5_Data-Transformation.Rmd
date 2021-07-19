@@ -187,7 +187,26 @@ airtime <- transmute(flights,air_time,
 nrow(filter(airtime, time_diff != 0))
 ```
 
-可是从结果来看，有327150行不相等。可能是因为记录的时间，跨过了午夜，因为数据里有负值；以及这些飞机的航线跨越了时区，按地方时记录的。虽然`airports`里记录了time zone信息，但我不确定用`tz`还是`tzone`。
+可是从结果来看，有327150行不相等。可能是因为记录的时间，跨过了午夜，因为数据里有负值；以及这些飞机的航线跨越了时区，按地方时记录的。虽然`airports`里记录了time zone信息，但我不确定用`tz`还是`tzone`，此处使用`tz`值。
+
+因此做如下改动:
+
+```{r 5.5.2b}
+airtime <- flights  %>% left_join(select(nycflights13::airports, dest = faa, tz)) %>%  
+  # 处理时区问题
+  mutate(arr_time = arr_time - 100*(tz+5)) %>% filter(!is.na(arr_time)) %>%
+  transmute(air_time,
+    dep_time = (dep_time %/% 100 * 60 + dep_time %% 100) %% 1440,
+    arr_time = (arr_time %/% 100 * 60 + arr_time %% 100) %% 1440,
+    arr_time_new = ifelse(dep_time > arr_time, arr_time + 1440, arr_time), # 修正跨午夜问题
+    a2d = arr_time_new - dep_time,
+    time_diff = air_time - a2d
+  )
+nrow(filter(airtime, time_diff != 0))
+airtime %>% ggplot(aes(time_diff))+geom_histogram()
+```
+
+虽然还是有差值，但基本上围绕在-235~49分钟之间。
 
 > 3.  Compare `dep_time`, `sched_dep_time`, and `dep_delay`. How would you expect those three numbers to be related?
 
@@ -203,7 +222,7 @@ delaytime <- transmute(flights,dep_delay,
 nrow(filter(delaytime, time_diff != 0))
 ```
 
-结果有1236个值不同，而且这个差值均为1440分钟。实际上是因为过了零点，而产生的计算上的差误。`time_diff = (dep_delay - delay)%%1440`把这个影响取消掉就可以了。
+结果有1236个值不同，而且这个差值均为1440分钟。实际上是因为过了零点，而产生的计算上的差误。用上一题里使用的`ifelse`处理就好了。
 
 > 4.  Find the 10 most delayed flights using a ranking function. How do you want to handle ties? Carefully read the documentation for `min_rank()`.
 
