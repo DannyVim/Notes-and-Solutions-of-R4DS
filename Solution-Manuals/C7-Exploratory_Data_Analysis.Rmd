@@ -1,0 +1,69 @@
+---
+title: "Rnotes to the R4DS"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+# Exercises 7.3
+
+> 1.  Explore the distribution of each of the `x`, `y`, and `z` variables in `diamonds`.
+>     What do you learn?
+>     Think about a diamond and how you might decide which dimension is the length, width, and depth.
+
+三维的数据中最小值都有零的，应该是数据错误，应该剔除。
+
+`coord_cartesian()`一定要加上，不然就需要删除离散点，否则难以作比较(应该是离散值分布的缘故)。
+
+从分布上来看，x、y一般比z大；但x、y之间不容区分。
+
+```{r 7.3.1}
+diamonds %>% select(x,y,z) %>% summary()
+
+x <-
+  diamonds %>% ggplot() + geom_histogram(aes(x = x), binwidth = 0.01) + labs(x = 'x:length') + coord_cartesian(xlim = c(0, 10))
+y <-
+  diamonds %>% ggplot() + geom_histogram(aes(x = y), binwidth = 0.01) + labs(x = 'y:width') + coord_cartesian(xlim = c(0, 10))
+z <-
+  diamonds %>% ggplot() + geom_histogram(aes(x = z), binwidth = 0.01) + labs(x = 'z:depth') + coord_cartesian(xlim = c(0, 10))
+
+patchwork::wrap_plots(x/y/z) # 把三张图排在一起
+
+# 比较xz和yz，jrnold给了一个简单的方法
+summarise(diamonds, mean(x > y), mean(x > z), mean(y > z))
+```
+
+> 2.  Explore the distribution of `price`.
+>     Do you discover anything unusual or surprising?
+>     (Hint: Carefully think about the `binwidth` and make sure you try a wide range of values.)
+
+首先整体图像左偏，其次中间一段明显有缺口。
+
+通过不断调整`coord_cartesian(xlim = ... )`，有缺口的部分大抵在1500±250的范围内。
+
+```{r 7.3.2}
+diamonds %>% ggplot() + geom_histogram(aes(x = price), binwidth = 10)
+diamonds %>% ggplot() + geom_histogram(aes(x = price), binwidth = 10) + coord_cartesian(xlim = c(1250, 1750))
+```
+
+> 3.  How many diamonds are 0.99 carat?
+>     How many are 1 carat?
+>     What do you think is the cause of the difference?
+
+1克拉的数量远多于0.99克拉，因为0.01克拉的差距将导致约800元的价格差距。
+
+```{r 7.3.3}
+diamonds %>% select(carat,price) %>% filter(carat %in% c(0.99,1)) %>% group_by(carat) %>% summarise(n=n(),mean(price))
+```
+
+> 4.  Compare and contrast `coord_cartesian()` vs `xlim()` or `ylim()` when zooming in on a histogram.
+>     What happens if you leave `binwidth` unset?
+>     What happens if you try and zoom so only half a bar shows?
+
+`coord_cartesian()`只是zooming，相当于是放大镜一样；而后两个则是把范围之外的值直接抛弃，并不进行计算（如果想要算得快一些，后者可能更好）。
+
+`R`会分配一个默认的`binwidth`（通常是30）。
+
