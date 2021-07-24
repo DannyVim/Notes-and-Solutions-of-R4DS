@@ -67,3 +67,19 @@ diamonds %>% select(carat,price) %>% filter(carat %in% c(0.99,1)) %>% group_by(c
 
 `R`会分配一个默认的`binwidth`（通常是30）。
 
+# Exercises 7.4
+
+>1.  What happens to missing values in a histogram?
+>    What happens to missing values in a bar chart?
+>    Why is there a difference?
+
+`histogram`会提示忽略掉`NA`，而`bar chart`则会计算`NA`的数量（非数字类型变量）。
+
+```{r 7.4.1}
+diamonds %>% mutate(y = ifelse(y < 3 | y > 20, NA, y)) %>% ggplot() + geom_histogram(aes(x = y))
+diamonds %>% mutate(cut = ifelse(y < 3 | y > 20, NA, cut)) %>% ggplot() + geom_bar(aes(x = as.character(cut)))
+```
+
+> 2.  What does `na.rm = TRUE` do in `mean()` and `sum()`?
+
+计算时忽略NA，有时NA会导致计算错误。
