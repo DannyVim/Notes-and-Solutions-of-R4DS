@@ -83,3 +83,97 @@ diamonds %>% mutate(cut = ifelse(y < 3 | y > 20, NA, cut)) %>% ggplot() + geom_b
 > 2.  What does `na.rm = TRUE` do in `mean()` and `sum()`?
 
 计算时忽略NA，有时NA会导致计算错误。
+
+# Exercises 7.5
+
+> 1.  Use what you've learned to improve the visualisation of the departure times of cancelled vs. non-cancelled flights.
+
+```{r 7.5.1}
+nycflights13::flights %>% 
+  mutate(
+    cancelled = is.na(dep_time),
+    sched_hour = sched_dep_time %/% 100,
+    sched_min = sched_dep_time %% 100,
+    sched_dep_time = sched_hour + sched_min / 60
+  ) %>% ggplot(mapping = aes(x=sched_dep_time)) + 
+  geom_density(mapping = aes(fill = cancelled), alpha = 0.30)
+
+nycflights13::flights %>% 
+  mutate(
+    cancelled = is.na(dep_time),
+    sched_hour = sched_dep_time %/% 100,
+    sched_min = sched_dep_time %% 100,
+    sched_dep_time = sched_hour + sched_min / 60
+  ) %>%   ggplot() + 
+  geom_boxplot(mapping = aes(x = cancelled, y = sched_dep_time))
+```
+
+>2.  What variable in the diamonds dataset is most important for predicting the price of a diamond?
+>    How is that variable correlated with cut?
+>    Why does the combination of those two relationships lead to lower quality diamonds being more expensive?
+
+很明显，`carat`会是最重要的因素。`carat`和`cut`的联系并不密切，虽然`cut`差，但奈何不了`carat`大啊。
+
+```{r 7.5.2}
+cor(diamonds$price, select(diamonds, carat, depth, table))
+
+lm(price ~ carat + cut + color + table + clarity, data = diamonds) %>% summary.lm()
+
+diamonds %>% ggplot(aes(x=cut,y=carat))+geom_boxplot()
+```
+
+>3.  Exchange x variable and y variable in a vertical boxplot, and create a horizontal boxplot.
+>    How does this compare to using `coord_flip()`?
+
+```{r 7.5.3}
+diamonds %>% ggplot(aes(y = cut, x = carat)) + geom_boxplot()
+diamonds %>% ggplot(aes(y = cut, x = carat)) + geom_boxplot() + coord_flip()
+```
+
+>4.  One problem with boxplots is that they were developed in an era of much smaller datasets and tend to display a prohibitively large number of "outlying values". One approach to remedy this problem is the letter value plot.
+>    Install the `lvplot` package, and try using `geom_lv()` to display the distribution of price vs cut.
+>    What do you learn?
+>    How do you interpret the plots?
+
+https://doi.org/10.1080/10618600.2017.1305277
+
+```{r 7.5.4}
+ggplot(data = diamonds, aes(x = cut, y = price)) + lvplot::geom_lv(aes(fill = ..LV..))
+```
+
+>5.  Compare and contrast `geom_violin()` with a facetted `geom_histogram()`, or a coloured `geom_freqpoly()`.
+>    What are the pros and cons of each method?
+
+```{r 7.5.5}
+p <- nycflights13::flights %>% 
+  mutate(
+    cancelled = is.na(dep_time),
+    sched_hour = sched_dep_time %/% 100,
+    sched_min = sched_dep_time %% 100,
+    sched_dep_time = sched_hour + sched_min / 60
+  ) %>% ggplot() 
+p + geom_violin(mapping = aes(x = cancelled, y = sched_dep_time))
+p + geom_histogram(mapping = aes(x = sched_dep_time)) + facet_wrap(~cancelled)
+p + geom_freqpoly(mapping = aes(x = sched_dep_time,y = ..density.., colour = cancelled))
+```
+
+>6.  If you have a small dataset, it's sometimes useful to use `geom_jitter()` to see the relationship between a continuous and categorical variable. The `ggbeeswarm` package provides a number of methods similar to `geom_jitter()`.
+>    List them and briefly describe what each one does.
+
+- `geom_beeswarm`: 在横向水平上扰动
+
+- `geom-quasirandom`: 随机扰动
+
+这两个变量会将图像调整成小提琴图的样式。
+
+```{r 7.5.6}
+ggplot(mpg, aes(y = displ, x = drv, color = drv))+
+  geom_jitter()
+
+ggplot(mpg, aes(y = displ, x = drv, color = drv))+
+  ggbeeswarm::geom_beeswarm()
+
+ggplot(mpg, aes(y = displ, x = drv, color = drv))+
+  ggbeeswarm::geom_quasirandom()
+```
+
