@@ -84,11 +84,11 @@ diamonds %>% mutate(cut = ifelse(y < 3 | y > 20, NA, cut)) %>% ggplot() + geom_b
 
 计算时忽略NA，有时NA会导致计算错误。
 
-# Exercises 7.5
+# Exercises 7.5.1
 
-> 1.  Use what you've learned to improve the visualisation of the departure times of cancelled vs. non-cancelled flights.
+>1.  Use what you've learned to improve the visualisation of the departure times of cancelled vs. non-cancelled flights.
 
-```{r 7.5.1}
+```{r 7.5.1.1}
 nycflights13::flights %>% 
   mutate(
     cancelled = is.na(dep_time),
@@ -114,7 +114,7 @@ nycflights13::flights %>%
 
 很明显，`carat`会是最重要的因素。`carat`和`cut`的联系并不密切，虽然`cut`差，但奈何不了`carat`大啊。
 
-```{r 7.5.2}
+```{r 7.5.1.2}
 cor(diamonds$price, select(diamonds, carat, depth, table))
 
 lm(price ~ carat + cut + color + table + clarity, data = diamonds) %>% summary.lm()
@@ -125,7 +125,7 @@ diamonds %>% ggplot(aes(x=cut,y=carat))+geom_boxplot()
 >3.  Exchange x variable and y variable in a vertical boxplot, and create a horizontal boxplot.
 >    How does this compare to using `coord_flip()`?
 
-```{r 7.5.3}
+```{r 7.5.1.3}
 diamonds %>% ggplot(aes(y = cut, x = carat)) + geom_boxplot()
 diamonds %>% ggplot(aes(y = cut, x = carat)) + geom_boxplot() + coord_flip()
 ```
@@ -137,14 +137,14 @@ diamonds %>% ggplot(aes(y = cut, x = carat)) + geom_boxplot() + coord_flip()
 
 https://doi.org/10.1080/10618600.2017.1305277
 
-```{r 7.5.4}
+```{r 7.5.1.4}
 ggplot(data = diamonds, aes(x = cut, y = price)) + lvplot::geom_lv(aes(fill = ..LV..))
 ```
 
 >5.  Compare and contrast `geom_violin()` with a facetted `geom_histogram()`, or a coloured `geom_freqpoly()`.
 >    What are the pros and cons of each method?
 
-```{r 7.5.5}
+```{r 7.5.1.5}
 p <- nycflights13::flights %>% 
   mutate(
     cancelled = is.na(dep_time),
@@ -166,7 +166,7 @@ p + geom_freqpoly(mapping = aes(x = sched_dep_time,y = ..density.., colour = can
 
 这两个变量会将图像调整成小提琴图的样式。
 
-```{r 7.5.6}
+```{r 7.5.1.6}
 ggplot(mpg, aes(y = displ, x = drv, color = drv))+
   geom_jitter()
 
@@ -177,3 +177,104 @@ ggplot(mpg, aes(y = displ, x = drv, color = drv))+
   ggbeeswarm::geom_quasirandom()
 ```
 
+# Exercises 7.5.2
+
+>1.  How could you rescale the count dataset above to more clearly show the distribution of cut within colour, or colour within cut?
+
+```{r 7.5.2.1}
+diamonds %>% 
+  count(color, cut) %>%
+  group_by(color) %>%
+  mutate(prop_in_color = n/sum(n)) %>%
+  ggplot(mapping = aes(x = color, y = cut)) +
+    geom_tile(mapping = aes(fill = prop_in_color))
+```
+
+>2.  Use `geom_tile()` together with dplyr to explore how average flight delays vary by destination and month of year.
+>    What makes the plot difficult to read?
+>    How could you improve it?
+
+- month没有因子化
+
+- dest数量太多，无法识别
+
+- 空值很多
+
+```{r 7.5.2.2}
+nycflights13::flights %>%
+  group_by(month, dest) %>%
+  mutate(dep_delay_average = mean(dep_delay, na.rm = TRUE)) %>%
+  ggplot(mapping = aes(x = month, y = dest)) + geom_tile(mapping = aes(fill = dep_delay_average)) +
+  labs(title = 'origin')
+
+nycflights13::flights %>% select(month,dest,dep_delay) %>%
+  group_by(month, dest) %>%
+  summarise(dep_delay_average = mean(dep_delay, na.rm = TRUE)) %>% #必须要summarise改变数据形态，才能下一步group算月份数
+  group_by(dest) %>% filter(n()==12) %>%
+  ggplot(mapping = aes(x = factor(month), y = dest)) + geom_tile(mapping = aes(fill = dep_delay_average)) +
+  labs(title = 'imporved')
+```
+
+>3.  Why is it slightly better to use `aes(x = color, y = cut)` rather than `aes(x = cut, y = color)` in the example above?
+
+好像确实把分类多的那个当`x`轴更好一些。
+
+# Exercises 7.5.3
+
+>1.  Instead of summarising the conditional distribution with a boxplot, you could use a frequency polygon.
+>    What do you need to consider when using `cut_width()` vs `cut_number()`?
+>    How does that impact a visualisation of the 2d distribution of `carat` and `price`?
+
+- 一个自动分配数量，一个自动分配宽度。选择时，应该还是考虑数据的形态，最终就是要控制好最终的图形是清晰可比较的。
+
+```{r 7.5.3.1}
+# 这里用`cut_number()`可以直接确定最后有几条线
+diamonds %>% ggplot(mapping = aes(color = cut_number(carat, 10), x = price)) +  geom_freqpoly()
+```
+
+>2.  Visualise the distribution of carat, partitioned by price.
+
+```{r 7.5.3.2}
+ggplot(diamonds, aes(x = cut_width(price, 2000, boundary = 0), y = carat)) +
+  geom_boxplot(varwidth = TRUE)
+
+ggplot(diamonds, aes(x = price, y = carat)) + geom_violin(aes(group = cut_width(price, 2000)))
+```
+
+>3.  How does the price distribution of very large diamonds compare to small diamonds?
+>    Is it as you expect, or does it surprise you?
+
+- 克数更大的钻石在价格上变差更大，不过主要体现中间部分；
+
+- 当然更大的钻石价格平均也更高；
+
+- 从数值的两端来看，最大和最小的差距是很明显的。
+
+```{r 7.5.3.3}
+ggplot(data = diamonds, mapping = aes(x = carat, y = price)) + 
+  geom_boxplot(mapping = aes(group = cut_width(carat, 0.25)))
+```
+
+>4.  Combine two of the techniques you've learned to visualise the combined distribution of cut, carat, and price.
+
+```{r 7.5.3.4}
+ggplot(data = diamonds) + geom_bin2d(mapping = aes(x = carat, y = price)) + facet_wrap(~cut)
+
+diamonds %>% 
+  mutate(carat = cut(carat, 5)) %>% 
+  ggplot(aes(x = carat, y = price))+
+  geom_boxplot(aes(group = interaction(cut_width(carat, 0.5), cut), fill = cut), position = position_dodge(preserve = "single"))
+```
+
+>5.  Two dimensional plots reveal outliers that are not visible in one dimensional plots.
+>    For example, some points in the plot below have an unusual combination of `x` and `y` values, which makes the points outliers even though their `x` and `y` values appear normal when examined separately.
+>
+>    ```{r, dev = "png"}
+>    ggplot(data = diamonds) +
+>      geom_point(mapping = aes(x = x, y = y)) +
+>      coord_cartesian(xlim = c(4, 11), ylim = c(4, 11))
+>    ```
+>
+>    Why is a scatterplot a better display than a binned plot for this case?
+
+这个问题在最小二乘法里面体现地比较明显。

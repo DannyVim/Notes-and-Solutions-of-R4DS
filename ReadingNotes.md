@@ -222,3 +222,31 @@ month %in% c(11, 12)
 > 此外，用`sum()`来计数，需要输入一个逻辑参数，它会对TRUE进行计数。
 
 `grouping()`分层多的时候，`summarise()`会根据最小的分组单元进行计算。
+
+# 6 Workflow: Scripts
+
+如果是分享给别人的代码，则不应该包含 `install.packages()`或 `setwd()` 。
+
+> 这些指令会对软件配置进行修改，不熟悉的人如果直接运行了代码，可能会造成对方意料之外的后果。
+
+# 7 Exploratory Data Analysis
+
+像是头脑风暴一样的，通常是用作图的方式，寻找数据的特征：数据的规律与分布、特殊的离散值、
+
+ `coord_cartesian()`可以限定显示坐标轴的某一段区间，当一些数据量悬殊以至于小数在图中几乎看不出来的时候，可以用以调整显示。
+
+在遇到一些变量中出现不合理或是错误数值的时候，应该尽量以数据集的完整为优先，将其转换成**缺失值（Missing Value）**——`NA`，而不是直接删掉这个样本。[`ifelse()`](https://rdrr.io/r/base/ifelse.html)函数和[`dplyr::case_when()`](https://dplyr.tidyverse.org/reference/case_when.html)函数，都是非常有效的方式，后者更可以处理较为复杂的情形。
+
+> 处理为`NA`，没有损失样本，样本可能在变量A缺失，但其他变量的值可能都是有效的，如果删掉的话，在分析其他的变量时反而更不完整了。
+
+另外，缺失值在某些情况是*有意义*的。
+
+箱线图的一个图示：
+
+![img](\ReadingNotes.assets\eda-boxplot.png)
+
+练习题里提到的`geom_violin()`、 `coord_flip()`；以及**lvplot**、**ggbeeswarm**包所提供的函数也非常具有参考价值。
+
+两个变量之间的关系可以分成三种类型：分类与定距、分类与分类、定距与定距。
+
+最后还推荐了三本书：[***ggplot2: Elegant Graphics for Data Analysis (Use R)***](https://ggplot2-book.org)、[***R Graphics Cookbook***](http://www.cookbook-r.com/Graphs/)、[***Graphical Data Analysis with R***](http://www.gradaanwr.net)。
