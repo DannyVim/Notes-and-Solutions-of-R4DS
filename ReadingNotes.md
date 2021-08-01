@@ -250,3 +250,26 @@ month %in% c(11, 12)
 两个变量之间的关系可以分成三种类型：分类与定距、分类与分类、定距与定距。
 
 最后还推荐了三本书：[***ggplot2: Elegant Graphics for Data Analysis (Use R)***](https://ggplot2-book.org)、[***R Graphics Cookbook***](http://www.cookbook-r.com/Graphs/)、[***Graphical Data Analysis with R***](http://www.gradaanwr.net)。
+
+# 8 Workflow: Projects
+
+应该把数据结果转换为代码保存，同时关闭R Studio上对workspace的保存。确实如此，在同时进行多个项目的时候，重新打开R Studio却发现它载入上一个项目的内容，其实并不友好。另外，还推荐了两个快捷键（`Alt+Shift+K`可以看到快捷键）：
+
+- `Ctrl + Shift + F10`重启R session
+- `Ctrl + Shift + S`重新运行当前脚本
+
+然后，对工作路径的管理也是数据分析工作中非常重要的部分：不应该每次都使用默认路径，而是改为工作文件夹的路径。
+
+- `getwd()`
+- `setwd()`
+
+**不要使用绝对路径**，特别是代码可能会分享给其他人使用的时候。
+
+在一个项目上工作的时候，最好是创建一个`Project`文件：所有相关文件，包括代码、数据、结果、图表都放在里面。`Project`会记住工作路径、代码历史等环境信息，同时每个项目都是独立保存和读取的。
+
+# Wrangle
+
+![img](\ReadingNotes.assets\data-science-wrangle.png)
+
+# 10 Tibbles
+
